@@ -3,8 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as fs from 'fs';
 import * as jsonc from 'jsonc-parser';
-import { basename, dirname, join } from 'path';
+import { basename, dirname, join, parse } from 'path';
 import * as vscode from 'vscode';
 import { coalesce, flatten } from '../utils/arrays';
 
@@ -45,11 +46,21 @@ class TsconfigLinkProvider implements vscode.DocumentLinkProvider {
 			);
 		}
 
-		const workspaceFolderPath = vscode.workspace.getWorkspaceFolder(document.uri)!.uri.fsPath;
-		return new vscode.DocumentLink(
-			this.getRange(document, extendsNode),
-			vscode.Uri.file(join(workspaceFolderPath, 'node_modules', extendsNode.value + (extendsNode.value.endsWith('.json') ? '' : '.json')))
-		);
+		// Imitate node module resolution (ideally it should be equivalent to `nodeModuleNameResolver` used in typescript)
+		const tsconfigModuleName = extendsNode.value + (extendsNode.value.endsWith('.json') ? '' : '.json');
+		let path = document.uri.fsPath;
+		do {
+			path = dirname(path);
+			const tsconfigPath = join(path, 'node_modules', tsconfigModuleName);
+			if (fs.existsSync(tsconfigPath)) {
+				return new vscode.DocumentLink(
+					this.getRange(document, extendsNode),
+					vscode.Uri.file(tsconfigPath)
+				);
+			}
+		} while (path !== parse(path).root);
+
+		return undefined;
 	}
 
 	private getFilesLinks(document: vscode.TextDocument, root: jsonc.Node) {
