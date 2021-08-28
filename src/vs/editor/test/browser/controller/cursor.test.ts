@@ -5211,12 +5211,12 @@ suite('autoClosingPairs', () => {
 			let autoClosePositions = [
 				'var a |=| [|]|;|',
 				'var b |=| `asd`|;|',
-				'var c |=| \'asd\'|;|',
+				'var c |=| \'asd\';|',
 				'var d |=| "asd"|;|',
 				'var e |=| /*3*/|	3;|',
 				'var f |=| /**| 3 */3;|',
 				'var g |=| (3+5)|;|',
-				'var h |=| {| a:| \'value\'| |}|;|',
+				'var h |=| {| a:| \'value\' |}|;|',
 			];
 			for (let i = 0, len = autoClosePositions.length; i < len; i++) {
 				const lineNumber = i + 1;
@@ -5424,6 +5424,38 @@ suite('autoClosingPairs', () => {
 			model.forceTokenization(model.getLineCount());
 			typeCharacters(viewModel, 'teste"');
 			assert.strictEqual(model.getLineContent(8), 'teste"');
+		});
+		mode.dispose();
+	});
+
+	test('issue #118101 - Do not auto-close if a typed character is a closing quote of a previous character', () => {
+		const mode = new AutoClosingMode();
+		usingCursor({
+			text: [
+				'',
+			],
+			languageIdentifier: mode.getLanguageIdentifier()
+		}, (_editor, model, viewModel) => {
+
+			function typeCharacters(chars: string) {
+				for (let i = 0, len = chars.length; i < len; i++) {
+					viewModel.type(chars[i], 'keyboard');
+				}
+			}
+
+			function reset() {
+				viewModel.setSelections('test', [new Selection(1, 1000, 1, 1000)]);
+				viewModel.cut('test');
+			}
+
+			// No auto-close due to the mechanism from #25658
+			typeCharacters('<p id"');
+			assert.strictEqual(model.getLineContent(1), '<p id"');
+
+			// Next `"` is a closing quote itself so it shouldn't trigger auto-close to cause `"""`
+			reset();
+			typeCharacters('<p id""');
+			assert.strictEqual(model.getLineContent(1), '<p id""');
 		});
 		mode.dispose();
 	});

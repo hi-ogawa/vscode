@@ -597,6 +597,16 @@ export class TypeOperations {
 				return null;
 			}
 
+			// Do not auto-close if a typed character is a closing quote of a previous character
+			if (autoClosingPair.open === autoClosingPair.close) {
+				if (insertOpenCharacter && position.column > 1 && lineText.charAt(position.column - 2) === ch) {
+					return null;
+				}
+				if (!insertOpenCharacter && position.column > 2 && lineText.charAt(position.column - 3) === ch) {
+					return null;
+				}
+			}
+
 			// Do not auto-close ' or " after a word character
 			if (autoClosingPair.open.length === 1 && chIsQuote && autoCloseConfig !== 'always') {
 				const wordSeparators = getMapForWordSeparators(config.wordSeparators);
